@@ -1,0 +1,6 @@
+{
+  "name": "Sanctuary - Catholic Scripture Prayers, Catechism, Penny Catechism and Bible Reading",
+  "description": "Catholic study suite featuring Holy Scripture Bible reader, daily prayers, interactive 59-bead Rosary, Penny Catechism Q&A, and systematic 1-to-4 multiple-choice testing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
