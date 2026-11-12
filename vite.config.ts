@@ -4,8 +4,11 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-  base: '/',
+  base: process.env.GITHUB_ACTIONS ? '/Daily-Catechism-Tutor/' : '/',
   plugins: [react(), tailwindcss()],
+  define: {
+    'process.env': {},
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
