@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   X,
   Compass,
@@ -20,10 +20,17 @@ import {
   Volume2,
   VolumeX,
   UserCheck,
-  RefreshCw
+  RefreshCw,
+  Search,
+  Sun,
+  Moon,
+  Download,
+  Upload
 } from "lucide-react";
 import { NavTabType } from "./Header";
 import { UserProgress, MistakeRecord } from "../types";
+import { useLanguage } from "../i18n/LanguageContext";
+import { downloadProgressBackup, importProgressFromJson } from "../services/storageService";
 
 interface SideDrawerProps {
   isOpen: boolean;
@@ -37,6 +44,10 @@ interface SideDrawerProps {
   isTimerRunning: boolean;
   timerSecondsLeft: number;
   onResetProgress?: () => void;
+  onOpenSearch?: () => void;
+  isCandlelight?: boolean;
+  onToggleTheme?: () => void;
+  onProgressUpdate?: (updated: UserProgress) => void;
 }
 
 export const SideDrawer: React.FC<SideDrawerProps> = ({
@@ -51,7 +62,13 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
   isTimerRunning,
   timerSecondsLeft,
   onResetProgress,
+  onOpenSearch,
+  isCandlelight = false,
+  onToggleTheme,
+  onProgressUpdate,
 }) => {
+  const { language, toggleLanguage } = useLanguage();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const mistakesList = Object.values(progress.mistakes || {}) as MistakeRecord[];
   const unresolvedMistakesCount = mistakesList.filter((m) => !m.isMastered).length;
 
@@ -136,6 +153,25 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
 
           {/* Drawer Scrollable Links */}
           <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin">
+            {/* Quick Search Button */}
+            {onOpenSearch && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onOpenSearch();
+                }}
+                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/40 border border-slate-200 dark:border-slate-700 transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <Search className="w-4 h-4 text-amber-500" />
+                  <span>Search Entire Library</span>
+                </div>
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-400">
+                  ⌘K
+                </span>
+              </button>
+            )}
+
             {/* GROUP 1: DAILY FORMATION */}
             <div>
               <span className="px-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">
@@ -404,7 +440,7 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
                 <button
                   id="drawer-toggle-sound"
                   onClick={onToggleSound}
-                  className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-all"
+                  className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
                 >
                   <div className="flex items-center gap-3">
                     {progress.soundEnabled ? (
@@ -419,6 +455,90 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
                   </span>
                 </button>
 
+                {/* Candlelight / Daylight Theme Toggle */}
+                {onToggleTheme && (
+                  <button
+                    onClick={onToggleTheme}
+                    className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                  >
+                    <div className="flex items-center gap-3">
+                      {isCandlelight ? (
+                        <Sun className="w-4 h-4 text-amber-500" />
+                      ) : (
+                        <Flame className="w-4 h-4 text-amber-500" />
+                      )}
+                      <span>Candlelight / Adoration Mode</span>
+                    </div>
+                    <span className="text-xs text-amber-600 dark:text-amber-400 font-bold">
+                      {isCandlelight ? "On" : "Off"}
+                    </span>
+                  </button>
+                )}
+
+                {/* Language Switch */}
+                <button
+                  onClick={toggleLanguage}
+                  className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <Languages className="w-4 h-4 text-indigo-600" />
+                    <span>Language / Sprache</span>
+                  </div>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
+                    {language === "en" ? "English" : "Deutsch"}
+                  </span>
+                </button>
+
+                {/* Backup & Restore Progress */}
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
+                  <button
+                    onClick={() => {
+                      downloadProgressBackup(progress);
+                      onClose();
+                    }}
+                    className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Download className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Backup Study Progress (JSON)</span>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Upload className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Restore Progress from Backup</span>
+                    </div>
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = (evt) => {
+                        const content = evt.target?.result as string;
+                        const res = importProgressFromJson(content);
+                        if (res.success && res.progress && onProgressUpdate) {
+                          onProgressUpdate(res.progress);
+                          alert("Study progress successfully restored!");
+                        } else {
+                          alert(`Import error: ${res.error || "Invalid file"}`);
+                        }
+                      };
+                      reader.readAsText(file);
+                      e.target.value = "";
+                      onClose();
+                    }}
+                    className="hidden"
+                  />
+                </div>
+
                 {onResetProgress && (
                   <button
                     id="drawer-reset-progress"
@@ -428,7 +548,7 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
                         onClose();
                       }
                     }}
-                    className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-all mt-3"
+                    className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all mt-3"
                   >
                     <RefreshCw className="w-4 h-4" />
                     <span>Reset Daily Progress</span>

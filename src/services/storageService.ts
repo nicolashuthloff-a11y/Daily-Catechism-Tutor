@@ -135,3 +135,59 @@ export function addStudiedMinutes(minutes: number, progress: UserProgress): User
   saveUserProgress(updated);
   return updated;
 }
+
+export function exportProgressToJson(progress: UserProgress): string {
+  return JSON.stringify(
+    {
+      version: 1,
+      appName: "Sanctuary - Catholic Study Suite",
+      exportedAt: new Date().toISOString(),
+      progress,
+    },
+    null,
+    2
+  );
+}
+
+export function downloadProgressBackup(progress: UserProgress): void {
+  try {
+    const jsonStr = exportProgressToJson(progress);
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const dateStr = new Date().toISOString().split("T")[0];
+    a.href = url;
+    a.download = `sanctuary-study-backup-${dateStr}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error("Failed to download progress backup", err);
+  }
+}
+
+export function importProgressFromJson(jsonString: string): { success: boolean; progress?: UserProgress; error?: string } {
+  try {
+    const parsed = JSON.parse(jsonString);
+    const progressData = parsed.progress || parsed;
+    if (typeof progressData !== "object" || !progressData) {
+      return { success: false, error: "Invalid backup format: missing progress data object" };
+    }
+    const validated: UserProgress = {
+      ...DEFAULT_PROGRESS,
+      ...progressData,
+      currentDay: typeof progressData.currentDay === "number" ? progressData.currentDay : 1,
+      dailyStreak: typeof progressData.dailyStreak === "number" ? progressData.dailyStreak : 1,
+      mistakes: typeof progressData.mistakes === "object" && progressData.mistakes ? progressData.mistakes : {},
+      testHistory: Array.isArray(progressData.testHistory) ? progressData.testHistory : [],
+      completedDays: Array.isArray(progressData.completedDays) ? progressData.completedDays : [],
+      memorizedItemIds: Array.isArray(progressData.memorizedItemIds) ? progressData.memorizedItemIds : [],
+    };
+    saveUserProgress(validated);
+    return { success: true, progress: validated };
+  } catch (e: any) {
+    return { success: false, error: e?.message || "Failed to parse JSON backup file" };
+  }
+}
+

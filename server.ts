@@ -63,7 +63,17 @@ async function generateWithFallback(
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const args = process.argv.slice(2);
+  let port = Number(process.env.PORT) || 3000;
+  let host = "0.0.0.0";
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--port" && args[i + 1]) {
+      port = Number(args[i + 1]) || port;
+    }
+    if (args[i] === "--host" && args[i + 1]) {
+      host = args[i + 1];
+    }
+  }
 
   app.use(express.json({ limit: "5mb" }));
 
@@ -230,8 +240,15 @@ Give a concise, encouraging 3-part 30-minute daily breakdown (10 mins mistake dr
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Teacher Curriculum Server running on http://0.0.0.0:${PORT}`);
+  const server = app.listen(port, host, () => {
+    console.log(`Teacher Curriculum Server running on http://${host}:${port}`);
+  });
+
+  process.on("SIGTERM", () => {
+    server.close();
+  });
+  process.on("SIGINT", () => {
+    server.close();
   });
 }
 

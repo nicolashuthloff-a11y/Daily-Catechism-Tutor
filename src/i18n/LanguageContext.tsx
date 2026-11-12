@@ -24,29 +24,40 @@ const LanguageContext = createContext<LanguageContextType>({
 });
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [language, setLanguageState] = useState<Language>("en");
+  const [language, setLanguageState] = useState<Language>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY) as Language;
+        if (saved === "en" || saved === "de") return saved;
+      } catch {
+        // ignore
+      }
+    }
+    return "en";
+  });
 
   const setLanguage = (lang: Language) => {
-    setLanguageState("en");
+    setLanguageState(lang);
     try {
-      localStorage.setItem(STORAGE_KEY, "en");
+      localStorage.setItem(STORAGE_KEY, lang);
     } catch {
       // ignore
     }
   };
 
   const toggleLanguage = () => {
-    setLanguage("en");
+    const next = language === "en" ? "de" : "en";
+    setLanguage(next);
   };
 
-  const t = TRANSLATIONS.en;
+  const t = TRANSLATIONS[language] || TRANSLATIONS.en;
 
   const getCurriculumDay = (day: CurriculumDay): CurriculumDay => {
-    return getLocalizedCurriculumDay(day, "en");
+    return getLocalizedCurriculumDay(day, language);
   };
 
   const getQuestion = (question: Question): Question => {
-    return getLocalizedQuestion(question, "en");
+    return getLocalizedQuestion(question, language);
   };
 
   return (
